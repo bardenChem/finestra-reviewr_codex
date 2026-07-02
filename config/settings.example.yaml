@@ -1,0 +1,13 @@
+pdf_input_dir: data/pdfs
+parsed_document_dir: data/parsed
+export_dir: data/exports
+sqlite_database_path: data/database/scireview.sqlite3
+qdrant_storage_dir: data/database/qdrant
+embedding_model: sentence-transformers/all-MiniLM-L6-v2
+ollama_base_url: http://localhost:11434
+ollama_model: llama3.1:8b
+request_timeout_seconds: 120
+logging_level: INFO
+chunk_target_chars: 3000
+chunk_overlap_chars: 250
+vector_indexing_enabled: false

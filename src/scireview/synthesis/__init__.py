@@ -1,0 +1,1 @@
+"""Minimal isolated synthesis components."""
