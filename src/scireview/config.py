@@ -54,7 +54,7 @@ class Settings(BaseSettings):
         validation_alias=_env_alias("ollama_model"),
     )
     request_timeout_seconds: int = Field(
-        default=120, ge=1, validation_alias=_env_alias("request_timeout_seconds")
+        default=900, ge=1, validation_alias=_env_alias("request_timeout_seconds")
     )
     logging_level: str = Field(default="INFO", validation_alias=_env_alias("logging_level"))
     chunk_target_chars: int = Field(
@@ -80,8 +80,28 @@ class Settings(BaseSettings):
         return f"sqlite:///{self.sqlite_database_path}"
 
 
+class _FinestraLogFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        original_name = record.name
+        if record.name == "scireview" or record.name.startswith("scireview."):
+            record.name = f"finestra{record.name.removeprefix('scireview')}"
+        try:
+            return super().format(record)
+        finally:
+            record.name = original_name
+
+
 def configure_logging(level: str) -> None:
-    logging.basicConfig(
-        level=getattr(logging, level.upper(), logging.INFO),
-        format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    log_level = getattr(logging, level.upper(), logging.INFO)
+    formatter = _FinestraLogFormatter(
+        "%(asctime)s %(levelname)s [%(name)s] %(message)s",
     )
+    root_logger = logging.getLogger()
+    if not root_logger.handlers:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+        root_logger.addHandler(stream_handler)
+    else:
+        for handler in root_logger.handlers:
+            handler.setFormatter(formatter)
+    root_logger.setLevel(log_level)

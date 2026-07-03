@@ -6,7 +6,7 @@ qdrant_storage_dir: data/database/qdrant
 embedding_model: sentence-transformers/all-MiniLM-L6-v2
 ollama_base_url: http://localhost:11434
 ollama_model: llama3.1:8b
-request_timeout_seconds: 120
+request_timeout_seconds: 900
 logging_level: INFO
 chunk_target_chars: 3000
 chunk_overlap_chars: 250

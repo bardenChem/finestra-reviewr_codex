@@ -46,6 +46,13 @@ class OllamaBackend(LLMBackend):
             response.raise_for_status()
         except httpx.ConnectError as exc:
             raise LLMUnavailableError(f"Ollama is unavailable at {self.base_url}") from exc
+        except httpx.TimeoutException as exc:
+            raise LLMGenerationError(
+                "Ollama request timed out "
+                f"after {self.timeout_seconds} seconds for model {self.model}. "
+                "Increase FINESTRA_REQUEST_TIMEOUT_SECONDS, use a smaller/faster model, "
+                "or reduce extraction input size."
+            ) from exc
         except httpx.HTTPError as exc:
             raise LLMGenerationError(f"Ollama request failed: {exc}") from exc
         data = response.json()

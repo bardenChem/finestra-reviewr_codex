@@ -15,6 +15,7 @@ from scireview.ingestion.docling_parser import DoclingParser
 from scireview.ingestion.pymupdf_parser import PyMuPDFParser
 from scireview.ingestion.scanner import PdfScanner
 from scireview.ingestion.service import IngestionService
+from scireview.llm.base import LLMGenerationError, LLMUnavailableError
 from scireview.llm.ollama_backend import OllamaBackend
 from scireview.storage.database import create_sqlite_engine, init_database, session_factory
 from scireview.storage.repositories import SqlAlchemyPaperRepository, SqlAlchemyStudyRepository
@@ -77,8 +78,14 @@ def create_app() -> FastAPI:
             service = IngestionService(
                 PdfScanner(),
                 HashDeduplicator(),
-                DoclingParser(),
-                PyMuPDFParser(),
+                DoclingParser(
+                    chunk_target_chars=settings.chunk_target_chars,
+                    chunk_overlap_chars=settings.chunk_overlap_chars,
+                ),
+                PyMuPDFParser(
+                    chunk_target_chars=settings.chunk_target_chars,
+                    chunk_overlap_chars=settings.chunk_overlap_chars,
+                ),
                 SqlAlchemyPaperRepository(session),
             )
             result = service.ingest(request.input_dir, force=request.force)
@@ -98,7 +105,14 @@ def create_app() -> FastAPI:
                 SqlAlchemyStudyRepository(session),
                 StudyExtractor(llm, Path("config/prompts/extract_study.txt")),
             )
-            service.extract_one(paper_id)
+            try:
+                service.extract_one(paper_id)
+            except LLMUnavailableError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+            except LLMGenerationError as exc:
+                raise HTTPException(status_code=504, detail=str(exc)) from exc
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
             session.commit()
             return {"status": "ok"}
 

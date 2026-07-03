@@ -17,6 +17,7 @@ from scireview.ingestion.docling_parser import DoclingParser
 from scireview.ingestion.pymupdf_parser import PyMuPDFParser
 from scireview.ingestion.scanner import PdfScanner
 from scireview.ingestion.service import IngestionService
+from scireview.llm.base import LLMGenerationError, LLMUnavailableError
 from scireview.llm.ollama_backend import OllamaBackend
 from scireview.storage.database import create_sqlite_engine, init_database, session_factory
 from scireview.storage.repositories import SqlAlchemyPaperRepository, SqlAlchemyStudyRepository
@@ -70,8 +71,14 @@ def ingest(
         service = IngestionService(
             PdfScanner(),
             HashDeduplicator(),
-            DoclingParser(),
-            PyMuPDFParser(),
+            DoclingParser(
+                chunk_target_chars=settings.chunk_target_chars,
+                chunk_overlap_chars=settings.chunk_overlap_chars,
+            ),
+            PyMuPDFParser(
+                chunk_target_chars=settings.chunk_target_chars,
+                chunk_overlap_chars=settings.chunk_overlap_chars,
+            ),
             SqlAlchemyPaperRepository(session),
         )
         result = service.ingest(input_dir, force=force)
@@ -110,11 +117,15 @@ def extract(
             SqlAlchemyStudyRepository(session),
             StudyExtractor(llm, Path("config/prompts/extract_study.txt")),
         )
-        if paper_id:
-            service.extract_one(paper_id)
-            count = 1
-        else:
-            count = service.extract_all()
+        try:
+            if paper_id:
+                service.extract_one(paper_id)
+                count = 1
+            else:
+                count = service.extract_all()
+        except (LLMGenerationError, LLMUnavailableError, ValueError) as exc:
+            typer.echo(f"Extraction failed: {exc}", err=True)
+            raise typer.Exit(1) from exc
         session.commit()
     typer.echo(f"Extracted {count} study record(s)")
 

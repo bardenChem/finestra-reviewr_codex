@@ -5,12 +5,17 @@ from pathlib import Path
 
 from scireview.domain.documents import ChunkType, DocumentChunk, DocumentMetadata, ParsedDocument
 from scireview.ingestion.base import ParserError
+from scireview.ingestion.chunking import split_text_for_chunks
 
 
 class PyMuPDFParser:
     """Fallback parser using PyMuPDF page text extraction."""
 
     name = "pymupdf"
+
+    def __init__(self, *, chunk_target_chars: int = 3000, chunk_overlap_chars: int = 250) -> None:
+        self.chunk_target_chars = chunk_target_chars
+        self.chunk_overlap_chars = chunk_overlap_chars
 
     @property
     def version(self) -> str:
@@ -39,16 +44,21 @@ class PyMuPDFParser:
                 warnings.append(f"page {index} contained no extractable text")
                 continue
             section_title = _guess_section(text)
-            chunks.append(
-                DocumentChunk(
-                    paper_id=paper_id,
-                    section_title=section_title,
-                    page_start=index,
-                    page_end=index,
-                    text=text,
-                    chunk_type=ChunkType.PARAGRAPH,
+            for chunk_text in split_text_for_chunks(
+                text,
+                target_chars=self.chunk_target_chars,
+                overlap_chars=self.chunk_overlap_chars,
+            ):
+                chunks.append(
+                    DocumentChunk(
+                        paper_id=paper_id,
+                        section_title=section_title,
+                        page_start=index,
+                        page_end=index,
+                        text=chunk_text,
+                        chunk_type=ChunkType.PARAGRAPH,
+                    )
                 )
-            )
 
         title = metadata.get("title") or None
         author_value = metadata.get("author") or ""
