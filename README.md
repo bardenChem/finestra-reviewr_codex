@@ -18,20 +18,20 @@ Main components:
 
 ## Installation
 
-Python 3.12 or newer is required. If the system only has Python 3.11, install
-Python 3.12 first and create the virtual environment with that interpreter.
+Python 3.11 or newer is required. If the system already has Python 3.11, use it
+directly to create the virtual environment.
 
 Debian or Ubuntu options:
 
 ```bash
-# Option A: distro package, when available
+# Option A: distro package, when Python 3.11 is not already installed
 sudo apt update
-sudo apt install python3.12 python3.12-venv python3.12-dev
+sudo apt install python3.11 python3.11-venv python3.11-dev
 
-# Option B: pyenv, useful when the distro does not ship Python 3.12
+# Option B: pyenv, useful when the distro does not ship Python 3.11
 curl https://pyenv.run | bash
-pyenv install --list | grep " 3\.12\."
-PYTHON_VERSION=3.12.11  # replace with the latest listed 3.12 patch release
+pyenv install --list | grep " 3\.11\."
+PYTHON_VERSION=3.11.13  # replace with the latest listed 3.11 patch release
 pyenv install "$PYTHON_VERSION"
 pyenv local "$PYTHON_VERSION"
 ```
@@ -39,28 +39,108 @@ pyenv local "$PYTHON_VERSION"
 macOS with Homebrew:
 
 ```bash
-brew install python@3.12
-python3.12 -m venv .venv
+brew install python@3.11
+python3.11 -m venv .venv
 ```
 
 Windows:
 
 ```powershell
-winget install Python.Python.3.12
-py -3.12 -m venv .venv
+winget install Python.Python.3.11
+py -3.11 -m venv .venv
 ```
 
-Then install Finestra:
+Then install the lightweight development environment:
 
 ```bash
 cp .env.example .env
-python3.12 -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
+python -m pip install --upgrade pip
 pip install -e ".[dev]"
 ```
 
-If `python3.12 -m venv` fails on Debian or Ubuntu, install the matching
-`python3.12-venv` package. If package installation is unavailable, use `pyenv`.
+If `python3.11 -m venv` fails on Debian or Ubuntu, install the matching
+`python3.11-venv` package. If package installation is unavailable, use `pyenv`.
+
+The default installation intentionally avoids the heaviest optional ML
+dependencies. With only `.[dev]`, Finestra can run the CLI, API, database,
+tests, PyMuPDF fallback parsing, extraction against Ollama, and comparison
+exports. Install optional backends only when needed:
+
+```bash
+# Docling primary PDF parser. This can pull PyTorch/OCR dependencies.
+pip install -e ".[pdf]"
+
+# Qdrant local mode and Sentence Transformers embedding support.
+pip install -e ".[vector]"
+
+# Full local feature set, large install.
+pip install -e ".[pdf,vector,dev]"
+```
+
+## Disk Space During Installation
+
+The `No space left on device` error during `pip install` usually means the
+partition holding the virtual environment, pip cache, or temporary directory is
+full. A `.venv` inside this repository installs packages under:
+
+```text
+/home/usuario/dev/finestra-reviewr_codex/.venv/
+```
+
+Pip may also write temporary downloads and build files under `/tmp` and cache
+files under `~/.cache/pip`. So even when the virtual environment is active,
+installation can still fail if `/`, `/tmp`, or `/home` is nearly full.
+
+The failed install log shows very large packages:
+
+- `torch`: about 532 MB compressed before unpacking.
+- `nvidia-cublas`: about 423 MB compressed before unpacking.
+- `rapidocr`, `pymupdf`, `scipy`, `numpy`, and Docling parser wheels add more.
+
+During installation, pip can need several times the final package size because
+it stores compressed wheels, temporary files, and unpacked packages at the same
+time.
+
+Check space:
+
+```bash
+df -h
+du -sh .venv ~/.cache/pip /tmp 2>/dev/null
+```
+
+If the previous install failed halfway, remove the partial environment and pip
+cache before retrying:
+
+```bash
+deactivate 2>/dev/null || true
+rm -rf .venv
+python3 -m pip cache purge
+```
+
+If another disk or partition has space, put the virtual environment, pip cache,
+and temp directory there:
+
+```bash
+mkdir -p /path/with/space/finestra-venv
+mkdir -p /path/with/space/pip-cache
+mkdir -p /path/with/space/pip-tmp
+
+python3.11 -m venv /path/with/space/finestra-venv
+source /path/with/space/finestra-venv/bin/activate
+python -m pip install --upgrade pip
+
+TMPDIR=/path/with/space/pip-tmp \
+PIP_CACHE_DIR=/path/with/space/pip-cache \
+pip install -e ".[dev]"
+```
+
+Only install `.[pdf]` or `.[vector]` after confirming there is enough free
+space. If PyTorch is needed and you do not want CUDA packages, install a
+CPU-only PyTorch build first, then install the Finestra extra you need. The
+exact PyTorch command depends on your platform and should come from the
+official PyTorch selector.
 
 ## Ollama Setup
 
