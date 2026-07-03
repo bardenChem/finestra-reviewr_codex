@@ -95,6 +95,20 @@ def ingest(
 @app.command()
 def extract(
     paper_id: Annotated[str | None, typer.Option("--paper-id", help="Extract one paper.")] = None,
+    model: Annotated[
+        str | None,
+        typer.Option(
+            "--model",
+            help="Ollama model to use for this extraction run. Defaults to configured model.",
+        ),
+    ] = None,
+    timeout_seconds: Annotated[
+        int | None,
+        typer.Option(
+            "--timeout-seconds",
+            help="Ollama request timeout for this extraction run.",
+        ),
+    ] = None,
     config: Annotated[
         Path | None,
         typer.Option("--config", help="Optional YAML settings file."),
@@ -103,14 +117,17 @@ def extract(
     """Extract structured study records using the configured local LLM."""
 
     settings = _settings(config)
+    if timeout_seconds is not None and timeout_seconds < 1:
+        typer.echo("Extraction failed: --timeout-seconds must be at least 1", err=True)
+        raise typer.Exit(1)
     engine = create_sqlite_engine(settings.sqlite_database_path)
     init_database(engine)
     factory = session_factory(engine)
     with factory() as session:
         llm = OllamaBackend(
             base_url=settings.ollama_base_url,
-            model=settings.ollama_model,
-            timeout_seconds=settings.request_timeout_seconds,
+            model=model or settings.ollama_model,
+            timeout_seconds=timeout_seconds or settings.request_timeout_seconds,
         )
         service = ExtractionService(
             SqlAlchemyPaperRepository(session),
