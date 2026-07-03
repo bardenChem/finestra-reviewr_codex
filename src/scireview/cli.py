@@ -22,7 +22,7 @@ from scireview.storage.database import create_sqlite_engine, init_database, sess
 from scireview.storage.repositories import SqlAlchemyPaperRepository, SqlAlchemyStudyRepository
 from scireview.storage.vector_store import DisabledVectorStore, QdrantLocalVectorStore
 
-app = typer.Typer(help="Local scientific literature analysis with evidence traceability.")
+app = typer.Typer(help="Finestra local scientific literature analysis with evidence traceability.")
 logger = logging.getLogger(__name__)
 DEFAULT_PDF_DIR = Path("data/pdfs")
 

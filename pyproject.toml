@@ -3,12 +3,12 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "scientific-review-ai"
+name = "finestra"
 version = "0.1.0"
-description = "Local scientific literature analysis with evidence traceability."
+description = "Finestra local scientific literature analysis with evidence traceability."
 readme = "README.md"
 requires-python = ">=3.12"
-authors = [{ name = "SciReview contributors" }]
+authors = [{ name = "Finestra contributors" }]
 dependencies = [
   "docling>=2.0.0",
   "fastapi>=0.111.0",
@@ -33,6 +33,7 @@ dev = [
 ]
 
 [project.scripts]
+finestra = "scireview.cli:app"
 scireview = "scireview.cli:app"
 
 [tool.setuptools.packages.find]

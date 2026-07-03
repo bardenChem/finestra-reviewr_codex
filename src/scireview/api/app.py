@@ -33,7 +33,7 @@ def create_app() -> FastAPI:
     engine = create_sqlite_engine(settings.sqlite_database_path)
     init_database(engine)
     factory = session_factory(engine)
-    app = FastAPI(title="SciReview", version="0.1.0")
+    app = FastAPI(title="Finestra", version="0.1.0")
 
     @app.get("/health")
     def health() -> dict[str, str]:
